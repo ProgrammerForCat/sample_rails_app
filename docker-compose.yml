@@ -1,0 +1,41 @@
+# docker-compose.yml
+services:
+  db:
+    image: mysql:8.0 # MySQLのバージョンはお好みで
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./mysql/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: ${DATABASE_NAME}
+      MYSQL_USER: ${DATABASE_USERNAME}
+      MYSQL_PASSWORD: ${DATABASE_PASSWORD}
+    ports:
+      - "3306:3306" # 必要に応じてローカルのポートを変更してください
+
+  web:
+    build: .
+    command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails s -p 3000 -b '0.0.0.0'"
+    volumes:
+      - .:/myapp
+      - bundle_cache:/usr/local/bundle/ # Gemのキャッシュ
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    environment:
+      RAILS_ENV: development
+      DATABASE_HOST: db
+      DATABASE_USERNAME: ${DATABASE_USERNAME}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_NAME: ${DATABASE_NAME}
+      # webpackerやviteを使用している場合、以下の設定が必要な場合があります
+      # WEBPACKER_DEV_SERVER_HOST: 0.0.0.0
+      # VITE_PLUGIN_HOST: 0.0.0.0
+    stdin_open: true # pryなどのデバッグツールを使用する場合
+    tty: true        # pryなどのデバッグツールを使用する場合
+
+volumes:
+  db_data:
+  bundle_cache: # Gemのキャッシュ用ボリューム

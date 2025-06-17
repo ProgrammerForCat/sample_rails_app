@@ -1,0 +1,120 @@
+/*
+ * This is a manifest file that'll be compiled into application.css, which will include all the files
+ * listed below.
+ *
+ * Any CSS (and SCSS, if configured) file within this directory, lib/assets/stylesheets, or any plugin's
+ * vendor/assets/stylesheets directory can be referenced here using a relative path.
+ *
+ * You're free to add application-wide styles to this file and they'll appear at the bottom of the
+ * compiled file so the styles you add here take precedence over styles defined in any other CSS
+ * files in this directory. Styles in this file should be added after the last require_* statement.
+ * It is generally better to create a new file per style scope.
+ *
+ *= require_tree .
+ *= require_self
+ */
+
+/* ピンク基調のモダンデザイン */
+body {
+  background: #fff0f6;
+  color: #333;
+  font-family: 'Segoe UI', 'Hiragino Sans', 'Meiryo', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+  max-width: 900px;
+  margin: 40px auto;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(255, 0, 128, 0.08);
+  padding: 32px 24px;
+}
+
+h1, h2, h3, h4, h5 {
+  color: #d72660;
+  font-weight: 700;
+}
+
+.btn, input[type="submit"], button {
+  background: linear-gradient(90deg, #ff6fcb 0%, #ffb6b9 100%);
+  color: #fff;
+  border: none;
+  border-radius: 24px;
+  padding: 8px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px rgba(255, 0, 128, 0.08);
+  margin-right: 8px;
+}
+.btn:hover, input[type="submit"]:hover, button:hover {
+  background: linear-gradient(90deg, #ffb6b9 0%, #ff6fcb 100%);
+  box-shadow: 0 4px 16px rgba(255, 0, 128, 0.16);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 24px;
+}
+.table th, .table td {
+  border-bottom: 1px solid #ffe0ef;
+  padding: 12px 8px;
+  text-align: left;
+}
+.table th {
+  background: #ffe0ef;
+  color: #d72660;
+}
+.table-striped tbody tr:nth-child(odd) {
+  background: #fff6fa;
+}
+
+.form-group label {
+  color: #d72660;
+  font-weight: 600;
+}
+.form-control, textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ffb6b9;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 1rem;
+  background: #fff6fa;
+  color: #333;
+}
+input[type="text"], textarea {
+  outline: none;
+}
+input[type="text"]:focus, textarea:focus {
+  border-color: #d72660;
+  box-shadow: 0 0 0 2px #ffe0ef;
+}
+
+.alert-danger {
+  background: #ffe0ef;
+  color: #d72660;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.card {
+  background: #fff6fa;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(255, 0, 128, 0.08);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.input-group {
+  display: flex;
+  align-items: center;
+}
+.input-group-append {
+  margin-left: 8px;
+}

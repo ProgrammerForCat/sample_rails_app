@@ -1,0 +1,42 @@
+<div class="container mt-4">
+  <h1>本の一覧</h1>
+
+  <div class="mb-4">
+    <%= form_tag books_path, method: :get, class: "form-inline" do %>
+      <div class="input-group">
+        <%= text_field_tag :search, params[:search], class: "form-control", placeholder: "タイトルまたは著者で検索" %>
+        <div class="input-group-append">
+          <%= submit_tag "検索", class: "btn btn-primary" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <%= link_to '新しい本を追加', new_book_path, class: "btn btn-success mb-3" %>
+
+  <div class="table-responsive">
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>タイトル</th>
+          <th>著者</th>
+          <th>ISBN</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @books.each do |book| %>
+          <tr>
+            <td><%= link_to book.title, book_path(book) %></td>
+            <td><%= book.author %></td>
+            <td><%= book.isbn %></td>
+            <td>
+              <%= link_to '編集', edit_book_path(book), class: "btn btn-sm btn-primary" %>
+              <%= link_to '削除', book_path(book), method: :delete, data: { confirm: '本当に削除しますか？' }, class: "btn btn-sm btn-danger" %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

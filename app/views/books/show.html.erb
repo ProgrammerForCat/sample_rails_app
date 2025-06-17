@@ -1,0 +1,28 @@
+<div class="container mt-4">
+  <div class="card">
+    <div class="card-body">
+      <h1 class="card-title"><%= @book.title %></h1>
+      
+      <div class="mt-4">
+        <h5>著者</h5>
+        <p><%= @book.author %></p>
+      </div>
+
+      <div class="mt-4">
+        <h5>ISBN</h5>
+        <p><%= @book.isbn %></p>
+      </div>
+
+      <div class="mt-4">
+        <h5>説明</h5>
+        <p><%= @book.description %></p>
+      </div>
+
+      <div class="mt-4">
+        <%= link_to '編集', edit_book_path(@book), class: "btn btn-primary" %>
+        <%= link_to '削除', book_path(@book), method: :delete, data: { confirm: '本当に削除しますか？' }, class: "btn btn-danger" %>
+        <%= link_to '一覧に戻る', books_path, class: "btn btn-secondary" %>
+      </div>
+    </div>
+  </div>
+</div>
