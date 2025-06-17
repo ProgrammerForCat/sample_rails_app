@@ -49,10 +49,24 @@ h1, h2, h3, h4, h5 {
   transition: background 0.2s, box-shadow 0.2s;
   box-shadow: 0 2px 8px rgba(255, 0, 128, 0.08);
   margin-right: 8px;
+  display: inline-block;
 }
+
 .btn:hover, input[type="submit"]:hover, button:hover {
   background: linear-gradient(90deg, #ffb6b9 0%, #ff6fcb 100%);
   box-shadow: 0 4px 16px rgba(255, 0, 128, 0.16);
+}
+
+/* ボタングループのスタイル */
+.button-group {
+  display: flex;
+  gap: 8px;
+}
+
+/* フォームのインライン表示 */
+form.button_to {
+  display: inline-block;
+  margin: 0;
 }
 
 .table {
@@ -60,15 +74,18 @@ h1, h2, h3, h4, h5 {
   border-collapse: collapse;
   margin-top: 24px;
 }
+
 .table th, .table td {
   border-bottom: 1px solid #ffe0ef;
   padding: 12px 8px;
   text-align: left;
 }
+
 .table th {
   background: #ffe0ef;
   color: #d72660;
 }
+
 .table-striped tbody tr:nth-child(odd) {
   background: #fff6fa;
 }
@@ -77,6 +94,7 @@ h1, h2, h3, h4, h5 {
   color: #d72660;
   font-weight: 600;
 }
+
 .form-control, textarea {
   width: 100%;
   padding: 8px 12px;
@@ -87,9 +105,11 @@ h1, h2, h3, h4, h5 {
   background: #fff6fa;
   color: #333;
 }
+
 input[type="text"], textarea {
   outline: none;
 }
+
 input[type="text"]:focus, textarea:focus {
   border-color: #d72660;
   box-shadow: 0 0 0 2px #ffe0ef;
@@ -115,6 +135,7 @@ input[type="text"]:focus, textarea:focus {
   display: flex;
   align-items: center;
 }
+
 .input-group-append {
   margin-left: 8px;
 }

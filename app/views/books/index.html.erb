@@ -31,8 +31,10 @@
             <td><%= book.author %></td>
             <td><%= book.isbn %></td>
             <td>
-              <%= link_to '編集', edit_book_path(book), class: "btn btn-sm btn-primary" %>
-              <%= link_to '削除', book_path(book), method: :delete, data: { confirm: '本当に削除しますか？' }, class: "btn btn-sm btn-danger" %>
+              <div class="button-group">
+                <%= link_to '編集', edit_book_path(book), class: "btn btn-sm btn-primary" %>
+                <%= button_to '削除', book_path(book), method: :delete, class: "btn btn-sm btn-danger", form: { data: { turbo_confirm: '本当に削除しますか？' } } %>
+              </div>
             </td>
           </tr>
         <% end %>
