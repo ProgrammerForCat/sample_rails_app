@@ -67,6 +67,7 @@ jobs:
         DATABASE_USERNAME: root
         DATABASE_PASSWORD: password
         DATABASE_NAME: sample_rails_app_test
+        DATABASE_PORT: 3306
         
     - name: Run tests
       run: |
@@ -76,6 +77,7 @@ jobs:
         DATABASE_USERNAME: root
         DATABASE_PASSWORD: password
         DATABASE_NAME: sample_rails_app_test
+        DATABASE_PORT: 3306
 
   deploy:
     needs: test
@@ -120,75 +122,132 @@ jobs:
           
           # 現在の.envファイルをバックアップ（存在する場合）
           if [ -f shared/.env ]; then
-            cp shared/.env shared/.env.backup
+            echo "Backing up existing .env file..."
+            cp shared/.env shared/.env.backup.$(date +%Y%m%d%H%M%S)
+          else
+            echo "No existing .env file found"
           fi
           
           # リポジトリが存在しない場合はクローン
           if [ ! -d "repo" ]; then
+            echo "Cloning repository..."
             git clone https://github.com/${{ github.repository }}.git repo
           fi
           
           # リポジトリディレクトリに移動して最新のコードをプル
           cd repo
+          echo "Updating repository..."
           git fetch origin
           git reset --hard origin/main
           
           # 新しいリリースディレクトリを作成
           RELEASE_DIR="/var/www/sample_rails_app/releases/$(date +%Y%m%d%H%M%S)"
+          echo "Creating release directory: $RELEASE_DIR"
           mkdir -p "$RELEASE_DIR"
           
-          # ファイルをコピー
-          cp -r . "$RELEASE_DIR/"
+          # ファイルをコピー（.envファイルは除外）
+          echo "Copying files to release directory..."
+          if command -v rsync >/dev/null 2>&1; then
+            rsync -av --exclude='.env' --exclude='.env.*' . "$RELEASE_DIR/"
+          else
+            # rsyncが利用できない場合はcpを使用し、後で.envファイルを削除
+            cp -r . "$RELEASE_DIR/"
+            rm -f "$RELEASE_DIR/.env" "$RELEASE_DIR/.env.*" 2>/dev/null || true
+          fi
           
           # アプリケーションディレクトリに戻る
           cd /var/www/sample_rails_app
           
           # 現在のディレクトリをバックアップ
           if [ -d "current" ]; then
+            echo "Backing up current directory..."
             mv current current.backup
           fi
           
           # 新しいリリースを現在のディレクトリとして設定
+          echo "Setting new release as current..."
           ln -sf "$RELEASE_DIR" current
           
-          # .envファイルを復元（バックアップが存在する場合）
-          if [ -f shared/.env.backup ]; then
-            cp shared/.env.backup shared/.env
-            rm shared/.env.backup
+          # .envファイルを復元（最新のバックアップを使用）
+          if [ -f shared/.env.backup.* ]; then
+            echo "Restoring .env file from backup..."
+            LATEST_BACKUP=$(ls -t shared/.env.backup.* | head -1)
+            cp "$LATEST_BACKUP" shared/.env
+            echo "Restored from: $LATEST_BACKUP"
+          else
+            echo "No .env backup found, you may need to create one manually"
+            # .envファイルが存在しない場合はテンプレートを作成
+            if [ ! -f shared/.env ]; then
+              echo "Creating .env template file..."
+              cat > shared/.env << 'EOF'
+# Rails設定
+RAILS_ENV=production
+RAILS_MASTER_KEY=your_master_key_here
+
+# データベース設定（RDS）
+DATABASE_HOST=your-rds-endpoint.region.rds.amazonaws.com
+DATABASE_USERNAME=sample_rails_app
+DATABASE_PASSWORD=your_database_password
+DATABASE_NAME=sample_rails_app_production
+DATABASE_PORT=3306
+
+# アプリケーション設定
+RAILS_SERVE_STATIC_FILES=true
+ALLOWED_HOSTS=your-domain.com,your-ec2-ip
+
+# パフォーマンス設定
+RAILS_MAX_THREADS=5
+WEB_CONCURRENCY=3
+EOF
+              echo "Created .env template. Please update with your actual values."
+            fi
           fi
           
           # 現在のディレクトリに移動
           cd current
           
           # 依存関係のインストール
+          echo "Installing dependencies..."
           bundle install --deployment --without development test
           
           # アセットのプリコンパイル
+          echo "Precompiling assets..."
           RAILS_ENV=production bundle exec rake assets:precompile
           
           # データベースマイグレーション
+          echo "Running database migrations..."
           RAILS_ENV=production bundle exec rake db:migrate
           
           # Nginxの設定ファイルを更新
+          echo "Updating Nginx configuration..."
           sudo cp nginx.conf /etc/nginx/sites-available/sample_rails_app
           sudo ln -sf /etc/nginx/sites-available/sample_rails_app /etc/nginx/sites-enabled/
           sudo nginx -t
           
           # Unicornの設定ファイルを更新
+          echo "Updating Unicorn configuration..."
           sudo cp config/unicorn.rb /var/www/sample_rails_app/shared/config/
           
           # systemdの再読み込み
           sudo systemctl daemon-reload
           
           # Unicornの再起動
+          echo "Restarting Unicorn..."
           sudo systemctl restart unicorn
           
           # Nginxの再起動
+          echo "Restarting Nginx..."
           sudo systemctl restart nginx
           
           # 古いリリースをクリーンアップ（最新の5つを保持）
+          echo "Cleaning up old releases..."
           cd /var/www/sample_rails_app/releases
           ls -t | tail -n +6 | xargs -r rm -rf
+          
+          # 古いバックアップを削除（最新の3つを保持）
+          echo "Cleaning up old .env backups..."
+          cd /var/www/sample_rails_app/shared
+          ls -t .env.backup.* 2>/dev/null | tail -n +4 | xargs -r rm -f
           
           # 古いバックアップを削除
           if [ -d "/var/www/sample_rails_app/current.backup" ]; then
@@ -210,5 +269,12 @@ jobs:
           ls -la /var/www/sample_rails_app/
           echo "=== Current Directory Contents ==="
           ls -la /var/www/sample_rails_app/current/
+          echo "=== .env file status ==="
+          if [ -f /var/www/sample_rails_app/shared/.env ]; then
+            echo ".env file exists"
+            ls -la /var/www/sample_rails_app/shared/.env
+          else
+            echo ".env file does not exist"
+          fi
           
           echo "Deployment completed successfully!" 
