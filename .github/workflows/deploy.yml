@@ -48,13 +48,13 @@ jobs:
     - name: Wait for MySQL
       run: |
         echo "Waiting for MySQL to be ready..."
-        for i in {1..60}; do
+        for i in {1..120}; do
           if mysqladmin ping -h"127.0.0.1" -P3306 -uroot -ppassword --silent; then
             echo "MySQL is ready!"
             break
           fi
-          echo "Waiting for MySQL... ($i/60)"
-          sleep 2
+          echo "Waiting for MySQL... ($i/120)"
+          sleep 3
         done
         
         # 最終確認
@@ -62,6 +62,13 @@ jobs:
           echo "MySQL failed to start"
           exit 1
         fi
+        
+        # データベースの存在確認
+        echo "Checking if database exists..."
+        mysql -h"127.0.0.1" -P3306 -uroot -ppassword -e "SHOW DATABASES;" | grep sample_rails_app_test || {
+          echo "Database sample_rails_app_test not found, creating it..."
+          mysql -h"127.0.0.1" -P3306 -uroot -ppassword -e "CREATE DATABASE IF NOT EXISTS sample_rails_app_test;"
+        }
         
     - name: Check environment variables
       run: |
@@ -74,10 +81,18 @@ jobs:
         
     - name: Setup test database
       run: |
+        echo "Setting up test database..."
         bundle exec rake db:drop RAILS_ENV=test || true
         bundle exec rake db:create RAILS_ENV=test
         bundle exec rake db:schema:load RAILS_ENV=test
         bundle exec rake db:fixtures:load RAILS_ENV=test
+        echo "Database setup completed"
+        
+    - name: Verify database connection
+      run: |
+        echo "Verifying database connection..."
+        bundle exec rails runner "puts ActiveRecord::Base.connection.execute('SELECT 1').first" RAILS_ENV=test
+        echo "Database connection verified"
         
     - name: Run tests
       run: |
