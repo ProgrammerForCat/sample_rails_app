@@ -52,7 +52,7 @@ Type=forking
 User=ubuntu
 WorkingDirectory=/var/www/sample_rails_app/current
 Environment=RAILS_ENV=production
-ExecStart=/usr/local/bin/bundle exec unicorn_rails -c /var/www/sample_rails_app/current/config/unicorn.rb -E production -D
+ExecStart=/usr/local/bin/bundle exec unicorn_rails -c /var/www/sample_rails_app/shared/config/unicorn.rb -E production -D
 ExecReload=/bin/kill -USR2 \$MAINPID
 ExecStop=/bin/kill -QUIT \$MAINPID
 Restart=always
