@@ -29,6 +29,11 @@ jobs:
         ruby-version: '3.2.1'
         bundler-cache: true
         
+    - name: Install MySQL client
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y mysql-client
+        
     - name: Install dependencies
       run: |
         bundle install --jobs 4 --retry 3
@@ -41,8 +46,10 @@ jobs:
         
     - name: Setup test database
       run: |
+        bundle exec rake db:drop RAILS_ENV=test || true
         bundle exec rake db:create RAILS_ENV=test
         bundle exec rake db:schema:load RAILS_ENV=test
+        bundle exec rake db:fixtures:load RAILS_ENV=test
       env:
         DATABASE_HOST: 127.0.0.1
         DATABASE_USERNAME: root
@@ -94,8 +101,19 @@ jobs:
           # アプリケーションディレクトリに移動
           cd /var/www/sample_rails_app
           
+          # 現在の.envファイルをバックアップ（存在する場合）
+          if [ -f shared/.env ]; then
+            cp shared/.env shared/.env.backup
+          fi
+          
           # 最新のコードをプル
           git pull origin main
+          
+          # .envファイルを復元（バックアップが存在する場合）
+          if [ -f shared/.env.backup ]; then
+            cp shared/.env.backup shared/.env
+            rm shared/.env.backup
+          fi
           
           # 依存関係のインストール
           bundle install --deployment --without development test
