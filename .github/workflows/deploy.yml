@@ -33,6 +33,12 @@ jobs:
       run: |
         bundle install --jobs 4 --retry 3
         
+    - name: Wait for MySQL
+      run: |
+        while ! mysqladmin ping -h"127.0.0.1" -P3306 -uroot -ppassword --silent; do
+          sleep 1
+        done
+        
     - name: Setup test database
       run: |
         bundle exec rake db:create RAILS_ENV=test
@@ -47,7 +53,7 @@ jobs:
       run: |
         bundle exec rake test RAILS_ENV=test
       env:
-        DATABASE_HOST: localhost
+        DATABASE_HOST: 127.0.0.1
         DATABASE_USERNAME: root
         DATABASE_PASSWORD: password
         DATABASE_NAME: sample_rails_app_test
