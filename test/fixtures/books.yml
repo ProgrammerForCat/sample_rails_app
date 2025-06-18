@@ -1,13 +1,13 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
-  title: MyString
-  author: MyString
-  isbn: MyString
-  description: MyText
+  title: "The Great Gatsby"
+  author: "F. Scott Fitzgerald"
+  isbn: "978-0743273565"
+  description: "A story of the fabulously wealthy Jay Gatsby and his love for the beautiful Daisy Buchanan."
 
 two:
-  title: MyString
-  author: MyString
-  isbn: MyString
-  description: MyText
+  title: "To Kill a Mockingbird"
+  author: "Harper Lee"
+  isbn: "978-0446310789"
+  description: "The story of young Scout Finch and her father Atticus in a racially divided Alabama town."
