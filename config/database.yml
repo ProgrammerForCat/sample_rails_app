@@ -31,7 +31,6 @@ test:
   password: <%= ENV.fetch("DATABASE_PASSWORD") { "password" } %>
   database: <%= ENV.fetch("DATABASE_NAME") { "sample_rails_app_test" } %>
   port: <%= ENV.fetch("DATABASE_PORT") { 3306 } %>
-  reconnect: true
   variables:
     sql_mode: "STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO"
 

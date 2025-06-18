@@ -22,9 +22,16 @@ jobs:
         env:
           MYSQL_ROOT_PASSWORD: password
           MYSQL_DATABASE: sample_rails_app_test
+          MYSQL_USER: root
+          MYSQL_PASSWORD: password
         ports:
           - 3306:3306
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+          --name=mysql-test
         
     steps:
     - name: Checkout code
@@ -63,12 +70,20 @@ jobs:
           exit 1
         fi
         
-        # データベースの存在確認
+        # データベースの存在確認と作成
         echo "Checking if database exists..."
         mysql -h"127.0.0.1" -P3306 -uroot -ppassword -e "SHOW DATABASES;" | grep sample_rails_app_test || {
           echo "Database sample_rails_app_test not found, creating it..."
           mysql -h"127.0.0.1" -P3306 -uroot -ppassword -e "CREATE DATABASE IF NOT EXISTS sample_rails_app_test;"
         }
+        
+        # 接続テスト
+        echo "Testing MySQL connection..."
+        mysql -h"127.0.0.1" -P3306 -uroot -ppassword -e "SELECT 1;" || {
+          echo "MySQL connection test failed"
+          exit 1
+        }
+        echo "MySQL connection test successful"
         
     - name: Check environment variables
       run: |
@@ -82,6 +97,20 @@ jobs:
     - name: Setup test database
       run: |
         echo "Setting up test database..."
+        echo "Setting Rails environment variables..."
+        export DATABASE_HOST=127.0.0.1
+        export DATABASE_USERNAME=root
+        export DATABASE_PASSWORD=password
+        export DATABASE_NAME=sample_rails_app_test
+        export DATABASE_PORT=3306
+        
+        echo "Current environment variables:"
+        echo "DATABASE_HOST: $DATABASE_HOST"
+        echo "DATABASE_USERNAME: $DATABASE_USERNAME"
+        echo "DATABASE_PASSWORD: $DATABASE_PASSWORD"
+        echo "DATABASE_NAME: $DATABASE_NAME"
+        echo "DATABASE_PORT: $DATABASE_PORT"
+        
         bundle exec rake db:drop RAILS_ENV=test || true
         bundle exec rake db:create RAILS_ENV=test
         bundle exec rake db:schema:load RAILS_ENV=test
