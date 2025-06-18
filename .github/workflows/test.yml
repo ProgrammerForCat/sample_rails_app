@@ -39,7 +39,7 @@ jobs:
         bundle exec rake db:create RAILS_ENV=test
         bundle exec rake db:schema:load RAILS_ENV=test
       env:
-        DATABASE_HOST: localhost
+        DATABASE_HOST: 127.0.0.1
         DATABASE_USERNAME: root
         DATABASE_PASSWORD: password
         DATABASE_NAME: sample_rails_app_test
