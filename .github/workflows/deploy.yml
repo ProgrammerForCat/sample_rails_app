@@ -110,6 +110,11 @@ jobs:
         key: ${{ secrets.EC2_SSH_KEY }}
         port: ${{ secrets.EC2_PORT }}
         script: |
+          # 必要なディレクトリ構造を作成
+          sudo mkdir -p /var/www/sample_rails_app/{releases,shared,current}
+          sudo mkdir -p /var/www/sample_rails_app/shared/{log,tmp/{pids,sockets},config}
+          sudo chown -R ubuntu:ubuntu /var/www/sample_rails_app
+          
           # アプリケーションディレクトリに移動
           cd /var/www/sample_rails_app
           
@@ -193,5 +198,11 @@ jobs:
           # ログの確認
           echo "=== Recent Unicorn Logs ==="
           sudo journalctl -u unicorn -n 20 --no-pager
+          
+          # ディレクトリ構造の確認
+          echo "=== Directory Structure ==="
+          ls -la /var/www/sample_rails_app/
+          echo "=== Current Directory Contents ==="
+          ls -la /var/www/sample_rails_app/current/
           
           echo "Deployment completed successfully!" 
