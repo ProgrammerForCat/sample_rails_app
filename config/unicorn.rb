@@ -3,11 +3,21 @@ worker_processes Integer(ENV["WEB_CONCURRENCY"] || 3)
 timeout 15
 preload_app true
 
+# アプリケーションのルートディレクトリ
+app_path = "/var/www/sample_rails_app"
+
 # ソケットファイルのパス
-listen "/var/www/sample_rails_app/tmp/sockets/unicorn.sock", backlog: 64
+listen "#{app_path}/shared/tmp/sockets/unicorn.sock", backlog: 64
 
 # PIDファイルのパス
-pid "/var/www/sample_rails_app/tmp/pids/unicorn.pid"
+pid "#{app_path}/shared/tmp/pids/unicorn.pid"
+
+# ワーキングディレクトリ
+working_directory "#{app_path}/current"
+
+# ログファイルのパス
+stderr_path "#{app_path}/shared/log/unicorn.stderr.log"
+stdout_path "#{app_path}/shared/log/unicorn.stdout.log"
 
 before_fork do |server, worker|
   Signal.trap 'TERM' do

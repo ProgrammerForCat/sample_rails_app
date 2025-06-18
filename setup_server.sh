@@ -36,6 +36,11 @@ gem install bundler
 # Nginxのインストール
 sudo apt install -y nginx
 
+# アプリケーションディレクトリ構造の作成
+sudo mkdir -p /var/www/sample_rails_app/{releases,shared,current}
+sudo mkdir -p /var/www/sample_rails_app/shared/{log,tmp/{pids,sockets},config}
+sudo chown -R ubuntu:ubuntu /var/www/sample_rails_app
+
 # Unicornのsystemdサービスファイル作成
 sudo tee /etc/systemd/system/unicorn.service > /dev/null <<EOF
 [Unit]
@@ -47,7 +52,7 @@ Type=forking
 User=ubuntu
 WorkingDirectory=/var/www/sample_rails_app/current
 Environment=RAILS_ENV=production
-ExecStart=/usr/local/bin/bundle exec unicorn_rails -c /var/www/sample_rails_app/shared/config/unicorn.rb -E production -D
+ExecStart=/usr/local/bin/bundle exec unicorn_rails -c /var/www/sample_rails_app/current/config/unicorn.rb -E production -D
 ExecReload=/bin/kill -USR2 \$MAINPID
 ExecStop=/bin/kill -QUIT \$MAINPID
 Restart=always
