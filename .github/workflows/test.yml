@@ -1,0 +1,54 @@
+name: Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: sample_rails_app_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.2.1'
+        bundler-cache: true
+        
+    - name: Install dependencies
+      run: |
+        bundle install --jobs 4 --retry 3
+        
+    - name: Setup test database
+      run: |
+        bundle exec rake db:create RAILS_ENV=test
+        bundle exec rake db:schema:load RAILS_ENV=test
+      env:
+        DATABASE_HOST: localhost
+        DATABASE_USERNAME: root
+        DATABASE_PASSWORD: password
+        DATABASE_NAME: sample_rails_app_test
+        
+    - name: Run tests
+      run: |
+        bundle exec rake test RAILS_ENV=test
+      env:
+        DATABASE_HOST: localhost
+        DATABASE_USERNAME: root
+        DATABASE_PASSWORD: password
+        DATABASE_NAME: sample_rails_app_test 

@@ -1,0 +1,109 @@
+name: Deploy to AWS EC2
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: sample_rails_app_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.2.1'
+        bundler-cache: true
+        
+    - name: Install dependencies
+      run: |
+        bundle install --jobs 4 --retry 3
+        
+    - name: Setup test database
+      run: |
+        bundle exec rake db:create RAILS_ENV=test
+        bundle exec rake db:schema:load RAILS_ENV=test
+      env:
+        DATABASE_HOST: localhost
+        DATABASE_USERNAME: root
+        DATABASE_PASSWORD: password
+        DATABASE_NAME: sample_rails_app_test
+        
+    - name: Run tests
+      run: |
+        bundle exec rake test RAILS_ENV=test
+      env:
+        DATABASE_HOST: localhost
+        DATABASE_USERNAME: root
+        DATABASE_PASSWORD: password
+        DATABASE_NAME: sample_rails_app_test
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.2.1'
+        bundler-cache: true
+        
+    - name: Install dependencies
+      run: |
+        bundle install --jobs 4 --retry 3
+        
+    - name: Precompile assets
+      run: |
+        bundle exec rake assets:precompile RAILS_ENV=production
+      env:
+        RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
+        
+    - name: Deploy to EC2
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        port: ${{ secrets.EC2_PORT }}
+        script: |
+          # アプリケーションディレクトリに移動
+          cd /var/www/sample_rails_app
+          
+          # 最新のコードをプル
+          git pull origin main
+          
+          # 依存関係のインストール
+          bundle install --deployment --without development test
+          
+          # アセットのプリコンパイル
+          RAILS_ENV=production bundle exec rake assets:precompile
+          
+          # データベースマイグレーション
+          RAILS_ENV=production bundle exec rake db:migrate
+          
+          # Unicornの再起動
+          sudo systemctl restart unicorn
+          
+          # Nginxの再起動
+          sudo systemctl restart nginx
+          
+          echo "Deployment completed successfully!" 

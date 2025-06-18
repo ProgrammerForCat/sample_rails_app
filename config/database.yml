@@ -13,10 +13,10 @@ default: &default
   adapter: mysql2
   encoding: utf8mb4
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
-  host: db
-  username: root
-  password: password
-  database: sample_rails_app_development
+  host: <%= ENV.fetch("DATABASE_HOST") { "localhost" } %>
+  username: <%= ENV.fetch("DATABASE_USERNAME") { "root" } %>
+  password: <%= ENV.fetch("DATABASE_PASSWORD") { "password" } %>
+  database: <%= ENV.fetch("DATABASE_NAME") { "sample_rails_app_development" } %>
 
 development:
   <<: *default
@@ -28,9 +28,11 @@ test:
 
 production:
   <<: *default
-  database: sample_rails_app_production
-  username: sample_rails_app
-  password: <%= ENV["SAMPLE_RAILS_APP_DATABASE_PASSWORD"] %>
+  database: <%= ENV.fetch("DATABASE_NAME") { "sample_rails_app_production" } %>
+  username: <%= ENV.fetch("DATABASE_USERNAME") { "sample_rails_app" } %>
+  password: <%= ENV.fetch("DATABASE_PASSWORD") { ENV["SAMPLE_RAILS_APP_DATABASE_PASSWORD"] } %>
+  host: <%= ENV.fetch("DATABASE_HOST") { "localhost" } %>
+  port: <%= ENV.fetch("DATABASE_PORT") { 3306 } %>
 
 # As with config/credentials.yml, you never want to store sensitive information,
 # like your database password, in your source code. If your source code is
@@ -51,9 +53,3 @@ production:
 #
 # Read https://guides.rubyonrails.org/configuring.html#configuring-a-database
 # for a full overview on how database connection configuration can be specified.
-#
-production:
-  <<: *default
-  database: sample_rails_app_production
-  username: sample_rails_app
-  password: <%= ENV["SAMPLE_RAILS_APP_DATABASE_PASSWORD"] %>
