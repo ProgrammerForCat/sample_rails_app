@@ -106,10 +106,25 @@ jobs:
           # データベースマイグレーション
           RAILS_ENV=production bundle exec rake db:migrate
           
+          # Nginxの設定ファイルを更新
+          sudo cp nginx.conf /etc/nginx/sites-available/sample_rails_app
+          sudo ln -sf /etc/nginx/sites-available/sample_rails_app /etc/nginx/sites-enabled/
+          sudo nginx -t
+          
           # Unicornの再起動
           sudo systemctl restart unicorn
           
           # Nginxの再起動
           sudo systemctl restart nginx
+          
+          # サービスの状態確認
+          echo "=== Service Status ==="
+          sudo systemctl status unicorn --no-pager
+          sudo systemctl status nginx --no-pager
+          sudo systemctl status mysql --no-pager
+          
+          # ログの確認
+          echo "=== Recent Unicorn Logs ==="
+          sudo journalctl -u unicorn -n 20 --no-pager
           
           echo "Deployment completed successfully!" 
