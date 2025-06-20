@@ -240,26 +240,25 @@ jobs:
             # .envファイルが存在しない場合はテンプレートを作成
             if [ ! -f shared/.env ]; then
               echo "Creating .env template file..."
-              cat > shared/.env << 'EOF'
-# Rails設定
-RAILS_ENV=production
-RAILS_MASTER_KEY=your_master_key_here
-
-# データベース設定（RDS）
-DATABASE_HOST=your-rds-endpoint.region.rds.amazonaws.com
-DATABASE_USERNAME=sample_rails_app
-DATABASE_PASSWORD=your_database_password
-DATABASE_NAME=sample_rails_app_production
-DATABASE_PORT=3306
-
-# アプリケーション設定
-RAILS_SERVE_STATIC_FILES=true
-ALLOWED_HOSTS=your-domain.com,your-ec2-ip
-
-# パフォーマンス設定
-RAILS_MAX_THREADS=5
-WEB_CONCURRENCY=3
-EOF
+              # Heredocの代わりにechoを使用
+              echo "# Rails設定" > shared/.env
+              echo "RAILS_ENV=production" >> shared/.env
+              echo "RAILS_MASTER_KEY=your_master_key_here" >> shared/.env
+              echo "" >> shared/.env
+              echo "# データベース設定（RDS）" >> shared/.env
+              echo "DATABASE_HOST=your-rds-endpoint.region.rds.amazonaws.com" >> shared/.env
+              echo "DATABASE_USERNAME=sample_rails_app" >> shared/.env
+              echo "DATABASE_PASSWORD=your_database_password" >> shared/.env
+              echo "DATABASE_NAME=sample_rails_app_production" >> shared/.env
+              echo "DATABASE_PORT=3306" >> shared/.env
+              echo "" >> shared/.env
+              echo "# アプリケーション設定" >> shared/.env
+              echo "RAILS_SERVE_STATIC_FILES=true" >> shared/.env
+              echo "ALLOWED_HOSTS=your-domain.com,your-ec2-ip" >> shared/.env
+              echo "" >> shared/.env
+              echo "# パフォーマンス設定" >> shared/.env
+              echo "RAILS_MAX_THREADS=5" >> shared/.env
+              echo "WEB_CONCURRENCY=3" >> shared/.env
               echo "Created .env template. Please update with your actual values."
             fi
           fi
@@ -338,4 +337,4 @@ EOF
             echo ".env file does not exist"
           fi
           
-          echo "Deployment completed successfully!" 
+          echo "Deployment completed successfully!"
