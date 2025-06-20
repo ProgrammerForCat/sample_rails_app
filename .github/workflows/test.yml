@@ -18,7 +18,11 @@ jobs:
           MYSQL_DATABASE: sample_rails_app_test
         ports:
           - 3306:3306
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
         
     steps:
     - name: Checkout code
@@ -30,25 +34,37 @@ jobs:
         ruby-version: '3.2.1'
         bundler-cache: true
         
+    - name: Install MySQL client
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y mysql-client
+        
     - name: Install dependencies
       run: |
         bundle install --jobs 4 --retry 3
+
+    - name: Create .env file for test
+      run: |
+        echo "RAILS_ENV=test" > .env
+        echo "DATABASE_HOST=127.0.0.1" >> .env
+        echo "DATABASE_PORT=3306" >> .env
+        echo "DATABASE_USERNAME=root" >> .env
+        echo "DATABASE_PASSWORD=password" >> .env
+        echo "DATABASE_NAME=sample_rails_app_test" >> .env
+        
+    - name: Wait for MySQL
+      run: |
+        while ! mysqladmin ping -h"127.0.0.1" -P3306 -uroot -ppassword --silent; do
+          echo "Waiting for MySQL to be ready..."
+          sleep 2
+        done
+        echo "MySQL is ready!"
         
     - name: Setup test database
       run: |
-        bundle exec rake db:create RAILS_ENV=test
-        bundle exec rake db:schema:load RAILS_ENV=test
-      env:
-        DATABASE_HOST: 127.0.0.1
-        DATABASE_USERNAME: root
-        DATABASE_PASSWORD: password
-        DATABASE_NAME: sample_rails_app_test
+        bundle exec rake db:create
+        bundle exec rake db:schema:load
         
     - name: Run tests
       run: |
-        bundle exec rake test RAILS_ENV=test
-      env:
-        DATABASE_HOST: localhost
-        DATABASE_USERNAME: root
-        DATABASE_PASSWORD: password
-        DATABASE_NAME: sample_rails_app_test 
+        bundle exec rake test
