@@ -162,7 +162,10 @@ jobs:
         bundle exec rake assets:precompile RAILS_ENV=production
       env:
         RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
-        
+        DATABASE_HOST: localhost
+        DATABASE_USERNAME: dummy
+        DATABASE_PASSWORD: dummy
+        DATABASE_NAME: dummy
     - name: Deploy to EC2
       uses: appleboy/ssh-action@v1.0.3
       with:
