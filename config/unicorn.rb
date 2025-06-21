@@ -7,7 +7,7 @@ preload_app true
 app_path = "/var/www/sample_rails_app"
 
 # ソケットファイルのパス
-listen "#{app_path}/shared/tmp/sockets/unicorn.sock", backlog: 64
+listen "#{app_path}/shared/tmp/sockets/unicorn.sock", backlog: 64, tcp_nopush: false
 
 # PIDファイルのパス
 pid "#{app_path}/shared/tmp/pids/unicorn.pid"
