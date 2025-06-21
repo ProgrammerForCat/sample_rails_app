@@ -9,19 +9,14 @@ jobs:
   test:
     runs-on: ubuntu-latest
     
-    env:
-      DATABASE_HOST: 127.0.0.1
-      DATABASE_USERNAME: root
-      DATABASE_PASSWORD: password
-      DATABASE_NAME: sample_rails_app_test
-      DATABASE_PORT: 3306
-    
     services:
       mysql:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: password
           MYSQL_DATABASE: sample_rails_app_test
+          MYSQL_USER: root
+          MYSQL_PASSWORD: password
         ports:
           - 3306:3306
         options: >-
@@ -46,97 +41,31 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y mysql-client
         
-    - name: Install dependencies
+    - name: Create .env file for test
       run: |
-        bundle install --jobs 4 --retry 3
+        echo "RAILS_ENV=test" > .env
+        echo "DATABASE_HOST=127.0.0.1" >> .env
+        echo "DATABASE_PORT=3306" >> .env
+        echo "DATABASE_USERNAME=root" >> .env
+        echo "DATABASE_PASSWORD=password" >> .env
+        echo "DATABASE_NAME=sample_rails_app_test" >> .env
         
     - name: Wait for MySQL
       run: |
-        echo "Waiting for MySQL to be ready..."
-        for i in {1..120}; do
-          if mysqladmin ping -h"127.0.0.1" -P3306 -uroot -ppassword --silent; then
-            echo "MySQL is ready!"
-            break
-          fi
-          echo "Waiting for MySQL... ($i/120)"
-          sleep 3
+        while ! mysqladmin ping -h"127.0.0.1" -P3306 -uroot -ppassword --silent; do
+          echo "Waiting for MySQL to be ready..."
+          sleep 2
         done
-        
-        # 最終確認
-        if ! mysqladmin ping -h"127.0.0.1" -P3306 -uroot -ppassword --silent; then
-          echo "MySQL failed to start"
-          exit 1
-        fi
-        
-        # データベースの存在確認と作成
-        echo "Checking if database exists..."
-        mysql -h"127.0.0.1" -P3306 -uroot -ppassword -e "SHOW DATABASES;" | grep sample_rails_app_test || {
-          echo "Database sample_rails_app_test not found, creating it..."
-          mysql -h"127.0.0.1" -P3306 -uroot -ppassword -e "CREATE DATABASE IF NOT EXISTS sample_rails_app_test;"
-        }
-        
-        # 接続テスト
-        echo "Testing MySQL connection..."
-        mysql -h"127.0.0.1" -P3306 -uroot -ppassword -e "SELECT 1;" || {
-          echo "MySQL connection test failed"
-          exit 1
-        }
-        echo "MySQL connection test successful"
-        
-    - name: Check environment variables
-      run: |
-        echo "Checking environment variables..."
-        echo "DATABASE_HOST: $DATABASE_HOST"
-        echo "DATABASE_USERNAME: $DATABASE_USERNAME"
-        echo "DATABASE_PASSWORD: $DATABASE_PASSWORD"
-        echo "DATABASE_NAME: $DATABASE_NAME"
-        echo "DATABASE_PORT: $DATABASE_PORT"
+        echo "MySQL is ready!"
         
     - name: Setup test database
       run: |
-        echo "Setting up test database..."
-        echo "Setting Rails environment variables..."
-        export DATABASE_HOST=127.0.0.1
-        export DATABASE_USERNAME=root
-        export DATABASE_PASSWORD=password
-        export DATABASE_NAME=sample_rails_app_test
-        export DATABASE_PORT=3306
-        
-        echo "Current environment variables:"
-        echo "DATABASE_HOST: $DATABASE_HOST"
-        echo "DATABASE_USERNAME: $DATABASE_USERNAME"
-        echo "DATABASE_PASSWORD: $DATABASE_PASSWORD"
-        echo "DATABASE_NAME: $DATABASE_NAME"
-        echo "DATABASE_PORT: $DATABASE_PORT"
-        
-        bundle exec rake db:drop RAILS_ENV=test || true
-        bundle exec rake db:create RAILS_ENV=test
-        bundle exec rake db:schema:load RAILS_ENV=test
-        bundle exec rake db:fixtures:load RAILS_ENV=test
-        echo "Database setup completed"
-        
-    - name: Verify database connection
-      run: |
-        echo "Verifying database connection..."
-        bundle exec rails runner "puts ActiveRecord::Base.connection.execute('SELECT 1').first" RAILS_ENV=test
-        echo "Database connection verified"
+        bundle exec rake db:create
+        bundle exec rake db:schema:load
         
     - name: Run tests
       run: |
-        export DATABASE_HOST=127.0.0.1
-        export DATABASE_USERNAME=root
-        export DATABASE_PASSWORD=password
-        export DATABASE_NAME=sample_rails_app_test
-        export DATABASE_PORT=3306
-        
-        echo "Running tests with environment:"
-        echo "DATABASE_HOST: $DATABASE_HOST"
-        echo "DATABASE_USERNAME: $DATABASE_USERNAME"
-        echo "DATABASE_PASSWORD: $DATABASE_PASSWORD"
-        echo "DATABASE_NAME: $DATABASE_NAME"
-        echo "DATABASE_PORT: $DATABASE_PORT"
-        
-        bundle exec rake test RAILS_ENV=test
+        bundle exec rake test
 
   deploy:
     needs: test
@@ -147,25 +76,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: '3.2.1'
-        bundler-cache: true
-        
-    - name: Install dependencies
-      run: |
-        bundle install --jobs 4 --retry 3
-        
-    - name: Precompile assets
-      run: |
-        bundle exec rake assets:precompile RAILS_ENV=production
-      env:
-        RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
-        DATABASE_HOST: localhost
-        DATABASE_USERNAME: dummy
-        DATABASE_PASSWORD: dummy
-        DATABASE_NAME: dummy
     - name: Deploy to EC2
       uses: appleboy/ssh-action@v1.0.3
       with:
@@ -174,186 +84,69 @@ jobs:
         key: ${{ secrets.EC2_SSH_KEY }}
         port: ${{ secrets.EC2_PORT }}
         script: |
-          # === rbenv環境を有効にするための設定を追加 ===
+          # === rbenv環境を有効にする ===
           export PATH="$HOME/.rbenv/bin:$PATH"
           eval "$(rbenv init -)"
-          # ========================================
 
-          # 必要なディレクトリ構造を作成
+          # === ディレクトリ構造を準備 ===
           sudo mkdir -p /var/www/sample_rails_app/{releases,shared,current}
           sudo mkdir -p /var/www/sample_rails_app/shared/{log,tmp/{pids,sockets},config}
           sudo chown -R ubuntu:ubuntu /var/www/sample_rails_app
           
-          # アプリケーションディレクトリに移動
-          cd /var/www/sample_rails_app
-          
-          # 現在の.envファイルをバックアップ（存在する場合）
-          if [ -f shared/.env ]; then
-            echo "Backing up existing .env file..."
-            cp shared/.env shared/.env.backup.$(date +%Y%m%d%H%M%S)
-          else
-            echo "No existing .env file found"
-          fi
-          
-          # リポジトリが存在しない場合はクローン
-          if [ ! -d "repo" ]; then
-            echo "Cloning repository..."
-            git clone https://github.com/${{ github.repository }}.git repo
-          fi
-          
-          # リポジトリディレクトリに移動して最新のコードをプル
-          cd repo
-          echo "Updating repository..."
-          git fetch origin
-          git reset --hard origin/main
-          
-          # 新しいリリースディレクトリを作成
-          RELEASE_DIR="/var/www/sample_rails_app/releases/$(date +%Y%m%d%H%M%S)"
-          echo "Creating release directory: $RELEASE_DIR"
-          mkdir -p "$RELEASE_DIR"
-          
-          # ファイルをコピー（.envファイルは除外）
-          echo "Copying files to release directory..."
-          if command -v rsync >/dev/null 2>&1; then
-            rsync -av --exclude='.env' --exclude='.env.*' . "$RELEASE_DIR/"
-          else
-            # rsyncが利用できない場合はcpを使用し、後で.envファイルを削除
-            cp -r . "$RELEASE_DIR/"
-            rm -f "$RELEASE_DIR/.env" "$RELEASE_DIR/.env.*" 2>/dev/null || true
-          fi
-          
-          # アプリケーションディレクトリに戻る
-          cd /var/www/sample_rails_app
-          
-          # 現在のディレクトリをバックアップ
-          if [ -d "current" ]; then
-            echo "Backing up current directory..."
-            mv current current.backup
-          fi
-          
-          # 新しいリリースを現在のディレクトリとして設定
-          echo "Setting new release as current..."
-          ln -sf "$RELEASE_DIR" current
-          
-          # .envファイルを復元（最新のバックアップを使用）
-          if [ -n "$(ls -A shared/.env.backup.* 2>/dev/null)" ]; then
-            echo "Restoring .env file from backup..."
-            LATEST_BACKUP=$(ls -t shared/.env.backup.* | head -1)
-            cp "$LATEST_BACKUP" shared/.env
-            echo "Restored from: $LATEST_BACKUP"
-          else
-            echo "No .env backup found, you may need to create one manually"
-            # .envファイルが存在しない場合はテンプレートを作成
-            if [ ! -f shared/.env ]; then
-              echo "Creating .env template file..."
-              # Heredocの代わりにechoを使用
-              echo "# Rails設定" > shared/.env
-              echo "RAILS_ENV=production" >> shared/.env
-              echo "RAILS_MASTER_KEY=your_master_key_here" >> shared/.env
-              echo "" >> shared/.env
-              echo "# データベース設定（RDS）" >> shared/.env
-              echo "DATABASE_HOST=your-rds-endpoint.region.rds.amazonaws.com" >> shared/.env
-              echo "DATABASE_USERNAME=sample_rails_app" >> shared/.env
-              echo "DATABASE_PASSWORD=your_database_password" >> shared/.env
-              echo "DATABASE_NAME=sample_rails_app_production" >> shared/.env
-              echo "DATABASE_PORT=3306" >> shared/.env
-              echo "" >> shared/.env
-              echo "# アプリケーション設定" >> shared/.env
-              echo "RAILS_SERVE_STATIC_FILES=true" >> shared/.env
-              echo "ALLOWED_HOSTS=your-domain.com,your-ec2-ip" >> shared/.env
-              echo "" >> shared/.env
-              echo "# パフォーマンス設定" >> shared/.env
-              echo "RAILS_MAX_THREADS=5" >> shared/.env
-              echo "WEB_CONCURRENCY=3" >> shared/.env
-              echo "Created .env template. Please update with your actual values."
-            fi
-          fi
-          
-          # 現在のディレクトリに移動
-          cd current
+          # === .env ファイルをGitHub Secretsから直接作成 ===
+          echo "Creating .env file from GitHub Secrets..."
+          cat << EOF > /var/www/sample_rails_app/shared/.env
+          RAILS_ENV=production
+          RAILS_MASTER_KEY=${{ secrets.RAILS_MASTER_KEY }}
+          DATABASE_HOST=${{ secrets.PROD_DATABASE_HOST }}
+          DATABASE_USERNAME=${{ secrets.PROD_DATABASE_USERNAME }}
+          DATABASE_PASSWORD=${{ secrets.PROD_DATABASE_PASSWORD }}
+          DATABASE_NAME=${{ secrets.PROD_DATABASE_NAME }}
+          DATABASE_PORT=3306
+          RAILS_SERVE_STATIC_FILES=true
+          ALLOWED_HOSTS=${{ secrets.PROD_ALLOWED_HOSTS }}
+          RAILS_MAX_THREADS=5
+          WEB_CONCURRENCY=3
+          EOF
 
-          # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-          # ★ .envファイルを読み込んで環境変数を設定する処理を追加 ★
-          # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-          if [ -f ../shared/.env ]; then
-            echo "Loading environment variables from .env file..."
-            set -a
-            source ../shared/.env
-            set +a
-          else
-            echo "Error: .env file not found. Cannot proceed."
-            exit 1
-          fi
-
-          # 依存関係のインストール
+          # === 新しいリリースを作成 ===
+          cd /var/www/sample_rails_app
+          RELEASE_DIR="releases/$(date +%Y%m%d%H%M%S)"
+          git clone https://github.com/${{ github.repository }}.git "$RELEASE_DIR"
+          
+          cd "$RELEASE_DIR"
+          
+          # === 依存関係のインストール ===
           echo "Installing dependencies..."
-          bundle install --deployment --without development test
-          
-          # アセットのプリコンパイル
+          bundle config set --local path 'vendor/bundle'
+          bundle install --jobs 4 --retry 3 --without development test
+
+          # === アセットのプリコンパイル ===
           echo "Precompiling assets..."
-          RAILS_ENV=production bundle exec rake assets:precompile
-          
-          # データベースマイグレーション
+          bundle exec rake assets:precompile
+
+          # === データベースのマイグレーション ===
           echo "Running database migrations..."
-          RAILS_ENV=production bundle exec rake db:migrate
+          bundle exec rake db:migrate
           
-          # Nginxの設定ファイルを更新
-          echo "Updating Nginx configuration..."
-          sudo cp nginx.conf /etc/nginx/sites-available/sample_rails_app
+          # === NginxとUnicornの設定ファイルをコピー ===
+          echo "Updating configurations..."
+          sudo cp config/nginx.conf /etc/nginx/sites-available/sample_rails_app
           sudo ln -sf /etc/nginx/sites-available/sample_rails_app /etc/nginx/sites-enabled/
-          sudo nginx -t
-          
-          # Unicornの設定ファイルを更新
-          echo "Updating Unicorn configuration..."
           sudo cp config/unicorn.rb /var/www/sample_rails_app/shared/config/
+
+          # === 最新のリリースに切り替え ===
+          echo "Activating new release..."
+          ln -snf "/var/www/sample_rails_app/$RELEASE_DIR" /var/www/sample_rails_app/current
           
-          # systemdの再読み込み
+          # === サービスを再起動 ===
+          echo "Restarting services..."
           sudo systemctl daemon-reload
-          
-          # Unicornの再起動
-          echo "Restarting Unicorn..."
+          sudo nginx -t && sudo systemctl restart nginx
           sudo systemctl restart unicorn
-          
-          # Nginxの再起動
-          echo "Restarting Nginx..."
-          sudo systemctl restart nginx
-          
-          # 古いリリースをクリーンアップ（最新の5つを保持）
+
+          # === 古いリリースをクリーンアップ (最新5つを保持) ===
           echo "Cleaning up old releases..."
-          cd /var/www/sample_rails_app/releases
-          ls -t | tail -n +6 | xargs -r rm -rf
-          
-          # 古いバックアップを削除（最新の3つを保持）
-          echo "Cleaning up old .env backups..."
-          cd /var/www/sample_rails_app/shared
-          ls -t .env.backup.* 2>/dev/null | tail -n +4 | xargs -r rm -f
-          
-          # 古いバックアップを削除
-          if [ -d "/var/www/sample_rails_app/current.backup" ]; then
-            rm -rf /var/www/sample_rails_app/current.backup
-          fi
-          
-          # サービスの状態確認
-          echo "=== Service Status ==="
-          sudo systemctl status unicorn --no-pager
-          sudo systemctl status nginx --no-pager
-          sudo systemctl status mysql --no-pager
-          
-          # ログの確認
-          echo "=== Recent Unicorn Logs ==="
-          sudo journalctl -u unicorn -n 20 --no-pager
-          
-          # ディレクトリ構造の確認
-          echo "=== Directory Structure ==="
-          ls -la /var/www/sample_rails_app/
-          echo "=== Current Directory Contents ==="
-          ls -la /var/www/sample_rails_app/current/
-          echo "=== .env file status ==="
-          if [ -f /var/www/sample_rails_app/shared/.env ]; then
-            echo ".env file exists"
-            ls -la /var/www/sample_rails_app/shared/.env
-          else
-            echo ".env file does not exist"
-          fi
+          cd /var/www/sample_rails_app/releases && ls -t | tail -n +6 | xargs -r rm -rf
           
           echo "Deployment completed successfully!"
