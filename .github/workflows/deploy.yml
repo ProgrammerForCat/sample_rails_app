@@ -82,16 +82,19 @@ jobs:
         key: ${{ secrets.EC2_SSH_KEY }}
         port: ${{ secrets.EC2_PORT }}
         script: |
-          # === rbenv環境を有効にする ===
+          # エラー発生時にスクリプトを停止する設定
+          set -e
+
+          # rbenv環境を有効にする
           export PATH="$HOME/.rbenv/bin:$PATH"
           eval "$(rbenv init -)"
 
-          # === ディレクトリ構造を準備 ===
+          # ディレクトリ構造を準備
           sudo mkdir -p /var/www/sample_rails_app/{releases,shared}
           sudo mkdir -p /var/www/sample_rails_app/shared/{log,tmp/{pids,sockets},config}
           sudo chown -R ubuntu:ubuntu /var/www/sample_rails_app
           
-          # === .env ファイルをGitHub Secretsから直接作成 ===
+          # .env ファイルをGitHub Secretsから直接作成
           echo "Creating .env file from GitHub Secrets..."
           cat << EOF > /var/www/sample_rails_app/shared/.env
           RAILS_ENV=production
@@ -107,58 +110,53 @@ jobs:
           WEB_CONCURRENCY=3
           EOF
 
-          # === 新しいリリースを作成 ===
+          # 新しいリリースを作成
           cd /var/www/sample_rails_app
           RELEASE_DIR="releases/$(date +%Y%m%d%H%M%S)"
           git clone https://github.com/${{ github.repository }}.git "$RELEASE_DIR"
           
-          # === 新しいリリースディレクトリに移動 ===
+          # 新しいリリースディレクトリに移動
           cd "$RELEASE_DIR"
           
-          # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-          # ★ .envファイルを読み込んで環境変数を設定する処理を追加 ★
-          # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-          if [ -f ../../shared/.env ]; then
-            echo "Loading environment variables from .env file..."
-            set -a
-            source ../../shared/.env
-            set -a
-          else
-            echo "Error: .env file not found. Cannot proceed."
-            exit 1
-          fi
+          # .envファイルを読み込む
+          echo "Loading environment variables from .env file..."
+          set -a
+          source ../../shared/.env
+          set +a
           
-          # === 依存関係のインストール ===
+          # 依存関係のインストール
           echo "Installing dependencies..."
           bundle config set --local path 'vendor/bundle'
           bundle install --jobs 4 --retry 3 --without development test
 
-          # === アセットのプリコンパイル ===
+          # アセットのプリコンパイル
           echo "Precompiling assets..."
           bundle exec rake assets:precompile
 
-          # === データベースのマイグレーション ===
-          echo "Running database migrations..."
+          # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+          # ★ データベースの作成とマイグレーション ★
+          # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+          echo "Creating and migrating database..."
+          bundle exec rake db:create
           bundle exec rake db:migrate
           
-          # === NginxとUnicornの設定ファイルをコピー ===
+          # NginxとUnicornの設定ファイルをコピー
           echo "Updating configurations..."
-          # ★ nginx.confのパスを修正
           sudo cp nginx.conf /etc/nginx/sites-available/sample_rails_app
           sudo ln -sf /etc/nginx/sites-available/sample_rails_app /etc/nginx/sites-enabled/
           sudo cp config/unicorn.rb /var/www/sample_rails_app/shared/config/
 
-          # === 最新のリリースに切り替え ===
+          # 最新のリリースに切り替え
           echo "Activating new release..."
           ln -snf "/var/www/sample_rails_app/$RELEASE_DIR" /var/www/sample_rails_app/current
           
-          # === サービスを再起動 ===
+          # サービスを再起動
           echo "Restarting services..."
           sudo systemctl daemon-reload
           sudo nginx -t && sudo systemctl restart nginx
           sudo systemctl restart unicorn
 
-          # === 古いリリースをクリーンアップ (最新5つを保持) ===
+          # 古いリリースをクリーンアップ (最新5つを保持)
           echo "Cleaning up old releases..."
           cd /var/www/sample_rails_app/releases && ls -t | tail -n +6 | xargs -r rm -rf
           
