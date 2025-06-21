@@ -87,7 +87,7 @@ jobs:
           eval "$(rbenv init -)"
 
           # === ディレクトリ構造を準備 ===
-          sudo mkdir -p /var/www/sample_rails_app/{releases,shared,current}
+          sudo mkdir -p /var/www/sample_rails_app/{releases,shared}
           sudo mkdir -p /var/www/sample_rails_app/shared/{log,tmp/{pids,sockets},config}
           sudo chown -R ubuntu:ubuntu /var/www/sample_rails_app
           
@@ -112,7 +112,21 @@ jobs:
           RELEASE_DIR="releases/$(date +%Y%m%d%H%M%S)"
           git clone https://github.com/${{ github.repository }}.git "$RELEASE_DIR"
           
+          # === 新しいリリースディレクトリに移動 ===
           cd "$RELEASE_DIR"
+          
+          # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+          # ★ .envファイルを読み込んで環境変数を設定する処理を追加 ★
+          # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+          if [ -f ../../shared/.env ]; then
+            echo "Loading environment variables from .env file..."
+            set -a
+            source ../../shared/.env
+            set -a
+          else
+            echo "Error: .env file not found. Cannot proceed."
+            exit 1
+          fi
           
           # === 依存関係のインストール ===
           echo "Installing dependencies..."
@@ -129,7 +143,8 @@ jobs:
           
           # === NginxとUnicornの設定ファイルをコピー ===
           echo "Updating configurations..."
-          sudo cp config/nginx.conf /etc/nginx/sites-available/sample_rails_app
+          # ★ nginx.confのパスを修正
+          sudo cp nginx.conf /etc/nginx/sites-available/sample_rails_app
           sudo ln -sf /etc/nginx/sites-available/sample_rails_app /etc/nginx/sites-enabled/
           sudo cp config/unicorn.rb /var/www/sample_rails_app/shared/config/
 
