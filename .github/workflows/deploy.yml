@@ -271,7 +271,20 @@ jobs:
           
           # 現在のディレクトリに移動
           cd current
-          
+
+          # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+          # ★ .envファイルを読み込んで環境変数を設定する処理を追加 ★
+          # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+          if [ -f ../shared/.env ]; then
+            echo "Loading environment variables from .env file..."
+            set -a
+            source ../shared/.env
+            set +a
+          else
+            echo "Error: .env file not found. Cannot proceed."
+            exit 1
+          fi
+
           # 依存関係のインストール
           echo "Installing dependencies..."
           bundle install --deployment --without development test
