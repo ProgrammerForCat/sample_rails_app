@@ -236,7 +236,7 @@ jobs:
           ln -sf "$RELEASE_DIR" current
           
           # .envファイルを復元（最新のバックアップを使用）
-          if [ -f shared/.env.backup.* ]; then
+          if [ -n "$(ls -A shared/.env.backup.* 2>/dev/null)" ]; then
             echo "Restoring .env file from backup..."
             LATEST_BACKUP=$(ls -t shared/.env.backup.* | head -1)
             cp "$LATEST_BACKUP" shared/.env
