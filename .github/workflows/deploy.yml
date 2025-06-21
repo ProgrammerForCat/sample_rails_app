@@ -15,8 +15,6 @@ jobs:
         env:
           MYSQL_ROOT_PASSWORD: password
           MYSQL_DATABASE: sample_rails_app_test
-          MYSQL_USER: root
-          MYSQL_PASSWORD: password
         ports:
           - 3306:3306
         options: >-
